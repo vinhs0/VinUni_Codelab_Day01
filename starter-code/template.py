@@ -147,12 +147,39 @@ def call_gemini(
     from google import genai
     from google.genai import types
 
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-    # Configure using types.GenerateContentConfig
+    api_key=os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY is not set.")
 
-    # TODO: Initialize Gemini client, set config parameters, call generate_content,
-    #       measure latency, extract response text and usage metadata, and return the tuple.
-    raise NotImplementedError("Implement call_gemini")
+    client = genai.Client(api_key)
+
+    start = time.time()
+    response = client.models.generate_content(
+        model=model,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=temperature,
+            top_p=top_p,
+            max_output_tokens=max_tokens,
+        ),
+    )
+    end = time.time()
+
+    response_text = response.text
+    if not response_text:
+        raise ValueError(
+            "No responses was given."
+        )
+
+    latency_seconds = end - start
+
+    usage = {
+        "prompt_tokens": response.usage_metadata.prompt_token_count,
+        "completion_tokens": response.usage_metadata.candidates_token_count,
+        "total_tokens": response.usage_metadata.total_token_count,
+    }
+
+    return response_text, latency_seconds, usage
 
 
 # ---------------------------------------------------------------------------
