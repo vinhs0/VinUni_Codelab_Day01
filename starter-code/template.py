@@ -50,7 +50,7 @@ def call_openai(
     Args:
         prompt:      The user message to send.
         model:       The OpenAI model to use (default: gpt-4o).
-        temperature: Sampling temperature (0.0 – 2.0).
+        temperature: Sampling temperature (0.0 - 2.0).
         top_p:       Nucleus sampling threshold.
         max_tokens:  Maximum number of tokens to generate.
 
@@ -65,9 +65,39 @@ def call_openai(
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         # response.usage contains input_tokens and output_tokens (prompt_tokens/completion_tokens)
     """
-    # TODO: Import OpenAI, instantiate client, call chat.completions.create with parameters,
-    #       measure execution start/end time, extract text and token usage, and return them.
-    raise NotImplementedError("Implement call_openai")
+    from openai import OpenAI # Lazy import
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError(
+            "OPENAI_API_KEY is not set."
+        )
+
+    client = OpenAI(api_key)
+    start = time.time()
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role":"user", "content": prompt}],
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_tokens,
+    )
+    end = time.time()
+    response_text = response.choices[0].message.content
+    if not response_text:
+        raise ValueError(
+            "No responses was given."
+        )
+
+    latency_seconds = end - start
+
+    # Extract token usage
+    usage = {
+        "input_tokens": response.usage.prompt_tokens,
+        "output_tokens": response.usage.completion_tokens,
+    }
+
+    return response_text, latency_seconds, usage
 
 
 # ---------------------------------------------------------------------------
