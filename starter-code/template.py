@@ -303,8 +303,74 @@ def streaming_chatbot() -> None:
         - Check how to stream responses using client.chats or model.generate_content(..., stream=True).
         - Keep history limited to the last 3 turns to optimize context window and costs.
     """
-    # TODO: Setup interactive session, prompt user for input, stream response, and update history.
-    raise NotImplementedError("Implement streaming_chatbot")
+    from google import genai
+    from google.genai import types
+
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY is not set.")
+
+    client = genai.Client(api_key=api_key)
+
+    # Configure Gemini
+    config = types.GenerateContentConfig(
+        temperature=0.7,
+        top_p=0.9,
+        max_output_tokens=1024,
+    )
+
+    # Initialize chat session
+    chat = client.chats.create(
+        model="gemini-2.5-flash",
+        config=config,
+    )
+
+    print("Gemini 2.5 Flash Chatbot")
+    print("Type 'quit' or 'exit' to end the conversation.")
+    print("-" * 50)
+
+    while True:
+        try:
+            prompt = input("\nYou: ").strip()
+
+            if not prompt:
+                continue
+
+            if prompt.lower() in ("quit", "exit"):
+                print("\nGoodbye!")
+                break
+
+            print("\nGemini: ", end="", flush=True)
+
+            # Stream response
+            response_stream = chat.send_message_stream(prompt)
+
+            for chunk in response_stream:
+                if chunk.text:
+                    print(chunk.text, end="", flush=True)
+
+            print()  # New line after response
+
+            # Keep only the last 3 conversation turns (6 messages)
+            history = chat.get_history()
+            if len(history) > 6:
+                history = history[-6:]
+
+                # Recreate chat with trimmed history
+                chat = client.chats.create(
+                    model="gemini-2.5-flash",
+                    config=config,
+                    history=history,
+                )
+
+        except KeyboardInterrupt:
+            print("\n\nChatbot interrupted. Goodbye!")
+            break
+
+        except Exception as e:
+            print(f"\nError: {e}")
+
+    client.close()
 
 
 # ---------------------------------------------------------------------------
