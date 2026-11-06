@@ -214,9 +214,48 @@ def call_anthropic(
         client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         # response.usage contains input_tokens and output_tokens
     """
-    # TODO: Initialize Anthropic client, create message, measure latency,
-    #       extract content text and usage statistics, and return the tuple.
-    raise NotImplementedError("Implement call_anthropic")
+    import anthropic
+
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise ValueError("ANTHROPIC_API_KEY is not set.")
+
+    client = anthropic.Anthropic(api_key=api_key)
+
+    start = time.time()
+
+    response = client.messages.create(
+        model=model,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
+    )
+
+    end = time.time()
+
+    # Extract response text
+    response_text = "".join(
+        block.text
+        for block in response.content
+        if block.type == "text"
+    )
+
+    # Calculate latency
+    latency_seconds = end - start
+
+    # Extract token usage
+    usage = {
+        "prompt_tokens": response.usage.input_tokens,
+        "completion_tokens": response.usage.output_tokens,
+        "total_tokens": (
+            response.usage.input_tokens + response.usage.output_tokens
+        ),
+    }
+
+    return response_text, latency_seconds, usage
 
 
 # ---------------------------------------------------------------------------
