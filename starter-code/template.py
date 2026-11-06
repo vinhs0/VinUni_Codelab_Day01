@@ -396,9 +396,18 @@ def retry_with_backoff(
     Raises:
         The last exception raised by fn() after all retries are exhausted.
     """
-    # TODO: implement retry loop with exponential backoff
-    raise NotImplementedError("Implement retry_with_backoff")
+    if max_retries < 0:
+        raise ValueError("max_retries must be non-negative.")
+    if base_delay < 0:
+        raise ValueError("base_delay must be non-negative.")
 
+    for attempt in range(max_retries + 1):
+        try:
+            return fn()
+        except Exception:
+            if attempt == max_retries:
+                raise
+            time.sleep(base_delay * (2 ** attempt))
 
 # ---------------------------------------------------------------------------
 # Bonus Task B — Batch compare
@@ -414,9 +423,16 @@ def batch_compare(prompts: list[str]) -> list[dict]:
         List of dicts, each being the compare_models result with an extra
         key "prompt" containing the original prompt string.
     """
-    # TODO: iterate over prompts, call compare_models, and inject the original "prompt".
-    raise NotImplementedError("Implement batch_compare")
+    results = []
 
+    for prompt in prompts:
+        comparison = compare_models(prompt)
+        # Copy the result so adding the prompt does not mutate the original.
+        item = dict(comparison)
+        item["prompt"] = prompt
+        results.append(item)
+
+    return results
 
 # ---------------------------------------------------------------------------
 # Bonus Task C — Format comparison table
@@ -432,9 +448,48 @@ def format_comparison_table(results: list[dict]) -> str:
         A beautiful Markdown table string with columns:
         | Prompt | Model | Response (truncated) | Latency | Tokens (In/Out) | Cost (USD) |
     """
-    # TODO: Build and return the formatted table string. Truncate response to 50 chars for clean display.
-    raise NotImplementedError("Implement format_comparison_table")
+    headers = [
+        "Prompt",
+        "Model",
+        "Response (truncated)",
+        "Latency",
+        "Tokens (In/Out)",
+        "Cost (USD)",
+    ]
+    rows = ["| " + " | ".join(headers) + " |",
+            "| " + " | ".join("---" for _ in headers) + " |"]
 
+    def clean_cell(value: Any) -> str:
+        """Keep Markdown table cells on one line and escape pipe characters."""
+        return str(value).replace("|", r"\|").replace("\r", " ").replace("\n", " ")
+
+    for result in results:
+        prompt = clean_cell(result.get("prompt", ""))
+
+        for model_name, stats in result.items():
+            if model_name == "prompt" or not isinstance(stats, dict):
+                continue
+
+            response = str(stats.get("response", ""))
+            if len(response) > 50:
+                response = response[:47] + "..."
+
+            latency = stats.get("latency", 0.0)
+            input_tokens = stats.get("input_tokens", 0)
+            output_tokens = stats.get("output_tokens", 0)
+            cost = stats.get("cost", 0.0)
+
+            row = [
+                prompt,
+                clean_cell(model_name),
+                clean_cell(response),
+                f"{float(latency):.2f}s",
+                f"{input_tokens}/{output_tokens}",
+                f"${float(cost):.6f}",
+            ]
+            rows.append("| " + " | ".join(row) + " |")
+
+    return "\n".join(rows)
 
 # ---------------------------------------------------------------------------
 # Entry point for manual testing
