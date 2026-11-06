@@ -95,6 +95,7 @@ def call_openai(
     usage = {
         "input_tokens": response.usage.prompt_tokens,
         "output_tokens": response.usage.completion_tokens,
+        "total_tokens": response.usage.total_tokens,
     }
 
     return response_text, latency_seconds, usage
@@ -143,6 +144,12 @@ def call_gemini(
         Ensure your usage dictionary extracts 'input_tokens' and 'output_tokens' 
         from the response metadata (e.g. response.usage_metadata).
     """
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    # Configure using types.GenerateContentConfig
+
     # TODO: Initialize Gemini client, set config parameters, call generate_content,
     #       measure latency, extract response text and usage metadata, and return the tuple.
     raise NotImplementedError("Implement call_gemini")
